@@ -1,49 +1,56 @@
-import { NewAppScreen } from '@react-native/new-app-screen';
-import {
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import React, {useCallback, useEffect, useState} from 'react';
+import {ActivityIndicator, StatusBar, StyleSheet, View} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+
+import {getStoredToken} from './src/api/httpClient';
+import HomeScreen from './src/screens/HomeScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [booting, setBooting] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = await getStoredToken();
+      if (!cancelled) {
+        setSignedIn(!!token);
+        setBooting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onLoggedIn = useCallback(() => setSignedIn(true), []);
+  const onSignedOut = useCallback(() => setSignedIn(false), []);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar
+        barStyle={signedIn ? 'dark-content' : 'light-content'}
+      />
+      {booting ? (
+        <View style={styles.boot}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      ) : signedIn ? (
+        <HomeScreen onSignedOut={onSignedOut} />
+      ) : (
+        <LoginScreen onLoggedIn={onLoggedIn} />
+      )}
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      {/* <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      /> */}
-      <Text style={{ padding: 20 }}>
-        Hello, this is a sample React Native app using TypeScript and Safe Area
-        Context.
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
+  boot: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: '#f1f5f9',
   },
 });
 
